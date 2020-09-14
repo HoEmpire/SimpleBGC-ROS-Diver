@@ -1,0 +1,7 @@
+{
+  "C_Cpp.errorSquiggles": "Enabled",
+  "python.autoComplete.extraPaths": [
+    "/home/tim/livox-ros/devel/lib/python2.7/dist-packages",
+    "/opt/ros/kinetic/lib/python2.7/dist-packages"
+  ]
+}
