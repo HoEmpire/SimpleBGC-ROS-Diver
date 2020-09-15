@@ -7,7 +7,10 @@ float32 pitch_speed
 float32 yaw_speed
 uint8 set_pid_value 
 
-
+uint8 mode 
+float32 scan_range
+float32 scan_cycle_time
+float32 error
 
 byte POWER_ON = 0
 byte POWER_OFF = 1

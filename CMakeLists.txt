@@ -11,7 +11,6 @@ find_package(catkin REQUIRED COMPONENTS
 add_message_files(
    FILES
    command.msg
-   platform_control.msg
  )  
 
  generate_messages(

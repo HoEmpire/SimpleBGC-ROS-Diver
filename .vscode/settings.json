@@ -5,6 +5,9 @@
     "/opt/ros/kinetic/lib/python2.7/dist-packages"
   ],
   "files.associations": {
-    "thread": "cpp"
+    "thread": "cpp",
+    "*.ipp": "cpp",
+    "*.tcc": "cpp",
+    "bitset": "cpp"
   }
 }

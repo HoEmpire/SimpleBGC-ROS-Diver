@@ -1,6 +1,7 @@
 #define FREE 0
-#define SCANING 1
+#define SCANNING 1
 #define TRACKING 2
+#define PI 3.1415926535
 
 void crc16_update(uint16_t length, uint8_t *data, uint8_t crc[2])
 {
@@ -33,7 +34,6 @@ void crc16_calculate(uint16_t length, uint8_t *data, uint8_t crc[2])
 
 struct command_buffer_type
 {
-  uint8_t command;
   uint8_t power_buffer[6];
   uint8_t PID_buffer[7];
   uint8_t angle_speed_buffer[19];
@@ -42,6 +42,7 @@ struct command_buffer_type
 struct platform_info
 {
   uint8_t status;
+  uint8_t command;
   float roll, pitch, yaw;
   void init()
   {
@@ -49,5 +50,23 @@ struct platform_info
     pitch = 0;
     yaw = 0;
     status = FREE;
+  }
+};
+
+struct scan_info
+{
+  bool is_initialized;
+  int working_tick;
+  int init_tick;
+  int scan_tick;
+  float init_speed;
+  float init_yaw_error;
+  float range;
+  float cycle_time;
+  void init()
+  {
+    working_tick = 0;
+    init_tick = 100;
+    is_initialized = false;
   }
 };
