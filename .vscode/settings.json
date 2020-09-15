@@ -8,6 +8,7 @@
     "thread": "cpp",
     "*.ipp": "cpp",
     "*.tcc": "cpp",
-    "bitset": "cpp"
+    "bitset": "cpp",
+    "random": "cpp"
   }
 }

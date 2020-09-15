@@ -1,6 +1,7 @@
 #define FREE 0
 #define SCANNING 1
 #define TRACKING 2
+#define TRANSIENT 3
 #define PI 3.1415926535
 
 void crc16_update(uint16_t length, uint8_t *data, uint8_t crc[2])
@@ -43,6 +44,7 @@ struct platform_info
 {
   uint8_t status;
   uint8_t command;
+  int transient_tick;
   float roll, pitch, yaw;
   void init()
   {
@@ -68,5 +70,20 @@ struct scan_info
     working_tick = 0;
     init_tick = 100;
     is_initialized = false;
+  }
+};
+
+struct track_info
+{
+  bool is_initialized;
+  int working_tick;
+  int init_tick;
+  int scan_tick;
+  float p;
+  float error;
+  void init()
+  {
+    p = 1.0;
+    error = 0;
   }
 };

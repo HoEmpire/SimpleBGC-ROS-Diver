@@ -31,11 +31,14 @@ public:
 
   //二级封装
   void scan();
-  void track(float error, float p, float i, float d);
+  void track();
 
   command_buffer_type command_buffer;
+
   scan_info scan_infos;
   platform_info platform_infos;
+  track_info track_infos;
+
   serial::Serial ros_serial;
   ros::Subscriber pertocon_sub;
 };
@@ -44,6 +47,7 @@ toCtr::toCtr()
 {
   platform_infos.init();
   scan_infos.init();
+  track_infos.init();
   ros::NodeHandle nh("~");
   pertocon_sub = nh.subscribe<platform_driver::command>("/write", 10, &toCtr::command_hub, this);
 }
@@ -177,8 +181,21 @@ void toCtr::command_hub(platform_driver::command command_msg)
       scan_infos.range = command_msg.scan_range;
       scan_infos.cycle_time = command_msg.scan_cycle_time;
     }
+    platform_infos.status = command_msg.mode;
   }
-  platform_infos.status = command_msg.mode;
+  else if (platform_infos.status == SCANNING || platform_infos.status == TRACKING)
+  {
+    if (command_msg.mode == FREE)
+    {
+      move_angle(5.0, 0.0, 5.0, 0.0, 5.0, 0.0);  // MOVE TO ZERO POSITION
+      platform_infos.status = TRANSIENT;
+      platform_infos.transient_tick = 0;
+    }
+  }
+  else
+  {
+    platform_infos.status = command_msg.mode;
+  }
 
   if (platform_infos.status == FREE)
   {
@@ -224,6 +241,11 @@ void toCtr::command_hub(platform_driver::command command_msg)
       set_pid(id, command_msg.set_pid_value);
     }
   }
+  else if (platform_infos.status == TRACKING)
+  {
+    track_infos.error = command_msg.error;
+    track();
+  }
 }
 
 void toCtr::scan()
@@ -259,9 +281,9 @@ void toCtr::scan()
   }
 }
 
-void toCtr::track(float error, float p = 1, float i = 0.1, float d = 1)
+void toCtr::track()
 {
-  move_angle_yaw(error * p + error * i + error * d, 0, 1);
+  move_angle_yaw(track_infos.error * track_infos.p, 0, 1);
 }
 
 void toCtr::timerCb(const ros::TimerEvent &e)
@@ -283,6 +305,19 @@ void toCtr::timerCb(const ros::TimerEvent &e)
   }
   else if (platform_infos.status == TRACKING)
   {
+    ros_serial.write(command_buffer.angle_speed_buffer, sizeof(command_buffer.angle_speed_buffer));
+  }
+  else if (platform_infos.status == TRANSIENT)
+  {
+    if (platform_infos.transient_tick < 1000)
+    {
+      platform_infos.transient_tick++;
+    }
+    else
+    {
+      platform_infos.transient_tick = 0;
+      platform_infos.status = FREE;
+    }
     ros_serial.write(command_buffer.angle_speed_buffer, sizeof(command_buffer.angle_speed_buffer));
   }
 }

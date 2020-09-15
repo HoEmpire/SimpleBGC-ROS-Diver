@@ -32,8 +32,8 @@ include_directories(
   ${Boost_INCLUDE_DIRS}
 )
 
-# add_executable(gg src/test.cpp)
-# target_link_libraries(gg ${catkin_LIBRARIES})
+add_executable(gg src/test.cpp)
+target_link_libraries(gg ${catkin_LIBRARIES})
 
 add_executable(platform_driver src/main.cpp)
 target_link_libraries(platform_driver ${catkin_LIBRARIES})
