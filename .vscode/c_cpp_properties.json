@@ -5,7 +5,8 @@
       "includePath": [
         "${workspaceFolder}/**",
         "/opt/ros/kinetic/include",
-        "/home/tim/project-boat/devel/include/*"
+        "/home/tim/project-boat/devel/include/*",
+        "/home/tim/project-boat/src/platform-driver/include/*"
       ],
       "defines": [],
       "compilerPath": "/usr/bin/clang",

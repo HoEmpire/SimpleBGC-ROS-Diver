@@ -11,6 +11,7 @@ find_package(catkin REQUIRED COMPONENTS
 add_message_files(
    FILES
    command.msg
+   platform_control.msg
  )  
 
  generate_messages(
@@ -34,7 +35,6 @@ include_directories(
 
 # add_executable(gg src/test.cpp)
 # target_link_libraries(gg ${catkin_LIBRARIES})
-# add_dependencies(test platform_driver_generate_messages_cpp)
 
 add_executable(platform_driver src/main.cpp)
 target_link_libraries(platform_driver ${catkin_LIBRARIES})

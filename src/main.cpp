@@ -9,42 +9,7 @@
 #include <time.h>
 #include <ctime>
 
-void crc16_update(uint16_t length, uint8_t *data, uint8_t crc[2])
-{
-  uint16_t counter;
-  uint16_t polynom = 0x8005;
-  uint16_t crc_register = (uint16_t)crc[0] | ((uint16_t)crc[1] << 8);
-  uint8_t shift_register;
-  uint8_t data_bit, crc_bit;
-  for (counter = 0; counter < length; counter++)
-  {
-    for (shift_register = 0x01; shift_register > 0x00; shift_register <<= 1)
-    {
-      data_bit = (data[counter] & shift_register) ? 1 : 0;
-      crc_bit = crc_register >> 15;
-      crc_register <<= 1;
-      if (data_bit != crc_bit)
-        crc_register ^= polynom;
-    }
-  }
-  crc[0] = crc_register;
-  crc[1] = (crc_register >> 8);
-}
-
-void crc16_calculate(uint16_t length, uint8_t *data, uint8_t crc[2])
-{
-  crc[0] = 0;
-  crc[1] = 0;
-  crc16_update(length, data, crc);
-}
-
-struct command_buffer_type
-{
-  uint8_t command;
-  uint8_t power_buffer[6];
-  uint8_t PID_buffer[7];
-  uint8_t angle_speed_buffer[19];
-};
+#include "util.h"
 
 class toCtr
 {
@@ -116,13 +81,16 @@ void toCtr::send(platform_driver::command command_msg)
     command_buffer.power_buffer[4] = 0x0c;
     command_buffer.power_buffer[5] = 0x0a;
   }
-  else if (command_buffer.command == command_msg.ANGLE_CONTROL)
+  else if (command_buffer.command == command_msg.ANGLE_CONTROL || command_buffer.command == command_msg.SPEED_CONTROL)
   {
     command_buffer.angle_speed_buffer[0] = 0x24;  // header
     command_buffer.angle_speed_buffer[1] = 0x43;  //
     command_buffer.angle_speed_buffer[2] = 0x0d;
     command_buffer.angle_speed_buffer[3] = command_buffer.angle_speed_buffer[1] + command_buffer.angle_speed_buffer[2];
-    command_buffer.angle_speed_buffer[4] = 0x03;
+    if (command_buffer.command == command_msg.ANGLE_CONTROL)
+      command_buffer.angle_speed_buffer[4] = 0x03;
+    else if (command_buffer.command == command_msg.SPEED_CONTROL)
+      command_buffer.angle_speed_buffer[4] = 0x01;
 
     int16_t speed, angle;
     speed = int16_t(command_msg.roll_speed / 0.1220740379);
@@ -151,6 +119,41 @@ void toCtr::send(platform_driver::command command_msg)
     command_buffer.angle_speed_buffer[17] = crc[0];
     command_buffer.angle_speed_buffer[18] = crc[1];
   }
+  else
+  {
+    command_buffer.PID_buffer[0] = 0x24;
+    uint8_t id;
+    if (command_buffer.command == command_msg.SET_ROLL_P)
+      id = 0x00;
+    else if (command_buffer.command == command_msg.SET_PITCH_P)
+      id = 0x01;
+    else if (command_buffer.command == command_msg.SET_YAW_P)
+      id = 0x02;
+    else if (command_buffer.command == command_msg.SET_ROLL_I)
+      id = 0x03;
+    else if (command_buffer.command == command_msg.SET_PITCH_I)
+      id = 0x04;
+    else if (command_buffer.command == command_msg.SET_YAW_I)
+      id = 0x05;
+    else if (command_buffer.command == command_msg.SET_ROLL_D)
+      id = 0x06;
+    else if (command_buffer.command == command_msg.SET_PITCH_D)
+      id = 0x07;
+    else if (command_buffer.command == command_msg.SET_YAW_D)
+      id = 0x08;
+
+    command_buffer.PID_buffer[1] = id;
+    command_buffer.PID_buffer[2] = 0x01;
+    command_buffer.PID_buffer[3] = command_buffer.PID_buffer[1] + command_buffer.PID_buffer[2];
+
+    // body
+    command_buffer.PID_buffer[4] = command_msg.set_pid_value;
+
+    uint8_t crc[2];
+    crc16_calculate(4, command_buffer.PID_buffer + 1, crc);
+    command_buffer.PID_buffer[5] = crc[0];
+    command_buffer.PID_buffer[6] = crc[1];
+  }
 }
 
 void toCtr::timerCb(const ros::TimerEvent &e)
@@ -160,6 +163,8 @@ void toCtr::timerCb(const ros::TimerEvent &e)
     ros_serial.write(command_buffer.power_buffer, sizeof(command_buffer.power_buffer));
   else if (command_buffer.command == command_msg.ANGLE_CONTROL)
     ros_serial.write(command_buffer.angle_speed_buffer, sizeof(command_buffer.angle_speed_buffer));
+  else
+    ros_serial.write(command_buffer.PID_buffer, sizeof(command_buffer.PID_buffer));
 }
 
 int main(int argc, char *argv[])
