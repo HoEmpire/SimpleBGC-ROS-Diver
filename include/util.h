@@ -49,6 +49,8 @@ struct platform_info
   uint8_t command;
   int transient_tick;
   float roll, pitch, yaw;
+  float encoder_yaw_init;
+  float encoder_roll, encoder_pitch, encoder_yaw;
   void init()
   {
     roll = 0;
@@ -68,6 +70,7 @@ struct scan_info
   float init_yaw_error;
   float range;
   float cycle_time;
+  float scan_center_offset;
   void init()
   {
     working_tick = 0;

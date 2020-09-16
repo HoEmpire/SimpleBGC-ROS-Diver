@@ -18,19 +18,28 @@ class toCtr
 public:
   toCtr();
   int init_serial();
+  void init_encoder();
+  void init_system();
+
   void timerCb(const ros::TimerEvent &e);                  //定时器回调函数5hz
-  void command_hub(platform_driver::command command_msg);  //车控数据发送
+  void command_hub(platform_driver::command command_msg);  //主状态机
 
   //底层通讯
+  void encoder_calibration();
   void power_on();
   void power_off();
   void move_angle(float speed_roll, float angle_roll, float speed_pitch, float angle_pitch, float speed_yaw,
-                  float angle_yaw, int mode);
-  void set_pid(uint8_t id, uint8_t pid_value);
-  void read_data_request();
+                  float angle_yaw, int mode);   //角度运动控制基本函数
+  void set_pid(uint8_t id, uint8_t pid_value);  //设置PID
+  void read_data_request(std::string mode);     //
 
   //一级封装
   void move_angle_yaw(float speed_yaw, float angle_yaw, int mode);
+  void move_relative_angle_yaw(float speed_yaw, float angle_yaw);
+
+  //读取encoder和imu的数据
+  bool read_data_encoder();
+  bool read_data_imu();
 
   //二级封装
   void scan();
@@ -53,6 +62,32 @@ toCtr::toCtr()
   track_infos.init();
   ros::NodeHandle nh("~");
   pertocon_sub = nh.subscribe<platform_driver::command>("/write", 10, &toCtr::command_hub, this);
+}
+
+void toCtr::init_system()
+{
+  init_serial();
+  power_off();
+  delay_ms(100);
+  encoder_calibration();
+  delay_ms(100);
+  ros_serial.flushInput();
+  while (!read_data_imu())
+  {
+  }
+  ROS_INFO_STREAM("Initial IMU angles:");
+  ROS_INFO_STREAM("roll: " << platform_infos.roll << ", pitch: " << platform_infos.pitch
+                           << ", yaw: " << platform_infos.yaw);
+  delay_ms(100);
+  ros_serial.flushInput();
+  while (!read_data_encoder())
+  {
+  }
+  ROS_INFO_STREAM("Initial Encoder angles:");
+  ROS_INFO_STREAM("roll: " << platform_infos.encoder_roll << ", pitch: " << platform_infos.encoder_pitch
+                           << ", yaw: " << platform_infos.encoder_yaw);
+  delay_ms(100);
+  power_on();
 }
 
 int toCtr::init_serial()
@@ -83,6 +118,12 @@ int toCtr::init_serial()
   {
     return -1;
   }
+}
+
+void toCtr::init_encoder()
+{
+  platform_infos.encoder_yaw_init = platform_infos.encoder_yaw;
+  ROS_INFO_STREAM("Set initial encoder yaw to be: " << platform_infos.encoder_yaw_init << " degree.");
 }
 
 void toCtr::power_on()
@@ -116,6 +157,8 @@ void toCtr::move_angle(float speed_roll, float angle_roll, float speed_pitch, fl
     command_buffer.angle_speed_buffer[4] = 0x03;
   else if (mode == 1)
     command_buffer.angle_speed_buffer[4] = 0x01;
+  else if (mode == 2)
+    command_buffer.angle_speed_buffer[4] = 0x02;
 
   int16_t speed, angle;
   speed = int16_t(speed_roll / 0.1220740379);
@@ -175,30 +218,54 @@ void toCtr::set_pid(uint8_t id, uint8_t pid_value)
 void toCtr::command_hub(platform_driver::command command_msg)
 {
   platform_infos.command = command_msg.command;
-
-  if (platform_infos.status == FREE || platform_infos.status == TRACKING)
+  //状态机切换
+  if (platform_infos.status == FREE || platform_infos.status == TRANSIENT)
   {
     if (command_msg.mode == SCANNING)
     {
+      ROS_INFO("Status Free/Tracking to Status Scanning!");
       scan_infos.init();
       scan_infos.range = command_msg.scan_range;
       scan_infos.cycle_time = command_msg.scan_cycle_time;
     }
     platform_infos.status = command_msg.mode;
   }
-  else if (platform_infos.status == SCANNING || platform_infos.status == TRACKING)
+  else if (platform_infos.status == SCANNING)
   {
-    if (command_msg.mode == FREE)
+    if (command_msg.mode == SCANNING)
     {
-      move_angle(5.0, 0.0, 5.0, 0.0, 5.0, 0.0);  // MOVE TO ZERO POSITION
+      ROS_INFO("Status Free/Tracking to Status Scanning!");
+      scan_infos.init();
+      scan_infos.range = command_msg.scan_range;
+      scan_infos.cycle_time = command_msg.scan_cycle_time;
+      platform_infos.status = command_msg.mode;
+    }
+    else if (command_msg.mode == FREE)
+    {
+      move_relative_angle_yaw(5.0, 0);
       platform_infos.status = TRANSIENT;
       platform_infos.transient_tick = 0;
     }
   }
-  else
+  else if (platform_infos.status == TRACKING)
   {
-    platform_infos.status = command_msg.mode;
+    if (command_msg.mode == SCANNING)
+    {
+      ROS_INFO("Status Free/Tracking to Status Scanning!");
+      scan_infos.init();
+      scan_infos.range = command_msg.scan_range;
+      scan_infos.cycle_time = command_msg.scan_cycle_time;
+      platform_infos.status = command_msg.mode;
+    }
+    else if (command_msg.mode == FREE)
+    {
+      move_relative_angle_yaw(5.0, 0);
+      platform_infos.status = TRANSIENT;
+      platform_infos.transient_tick = 0;
+    }
   }
+
+  //=========================================================
 
   if (platform_infos.status == FREE)
   {
@@ -219,6 +286,10 @@ void toCtr::command_hub(platform_driver::command command_msg)
     {
       move_angle(command_msg.roll_speed, command_msg.roll_angle, command_msg.pitch_speed, command_msg.pitch_angle,
                  command_msg.yaw_speed, command_msg.yaw_angle, 1);
+    }
+    else if (platform_infos.command == command_msg.ENCODER_CALIBRATI0N)
+    {
+      encoder_calibration();
     }
     else
     {
@@ -257,7 +328,8 @@ void toCtr::scan()
   {
     if (scan_infos.working_tick == 0)
     {
-      scan_infos.init_yaw_error = scan_infos.range - platform_infos.yaw;
+      scan_infos.scan_center_offset = platform_infos.yaw + platform_infos.encoder_yaw - platform_infos.encoder_yaw_init;
+      scan_infos.init_yaw_error = scan_infos.range + scan_infos.scan_center_offset;
       scan_infos.init_speed = scan_infos.init_yaw_error / (CYCLE_TIME_SECOND * scan_infos.init_tick);
     }
 
@@ -276,7 +348,8 @@ void toCtr::scan()
 
   if (scan_infos.is_initialized == true)
   {
-    float angle = scan_infos.range * cos(2 * PI * scan_infos.working_tick / scan_infos.scan_tick);
+    float angle =
+        scan_infos.range * cos(2 * PI * scan_infos.working_tick / scan_infos.scan_tick) + scan_infos.scan_center_offset;
     float speed = -scan_infos.range * 2 * PI / scan_infos.cycle_time *
                   sin(2 * PI * scan_infos.working_tick / scan_infos.scan_tick);
     move_angle_yaw(speed, angle);
@@ -315,6 +388,8 @@ void toCtr::timerCb(const ros::TimerEvent &e)
     if (platform_infos.transient_tick < 1000)
     {
       platform_infos.transient_tick++;
+      if (platform_infos.transient_tick < 10)
+        move_angle_yaw(0, platform_infos.yaw);
     }
     else
     {
@@ -324,8 +399,54 @@ void toCtr::timerCb(const ros::TimerEvent &e)
     ros_serial.write(command_buffer.angle_speed_buffer, sizeof(command_buffer.angle_speed_buffer));
   }
 
-  read_data_request();
+  read_data_encoder();
+}
+
+void toCtr::read_data_request(std::string mode)
+{
+  uint8_t read_request_buffer[16];
+  read_request_buffer[0] = 0x24;
+  read_request_buffer[1] = 0x58;
+  read_request_buffer[2] = 0x0a;
+  read_request_buffer[3] = 0x62;
+
+  if (mode == "encoder")
+    read_request_buffer[4] = 0x08;
+  else if (mode == "imu")
+    read_request_buffer[4] = 0x01;
+  else
+    read_request_buffer[4] = 0x00;
+
+  read_request_buffer[5] = 0x00;
+  read_request_buffer[6] = 0x00;
+  read_request_buffer[7] = 0x00;
+
+  read_request_buffer[8] = 0x00;
+  read_request_buffer[9] = 0x00;
+  read_request_buffer[10] = 0x00;
+  read_request_buffer[11] = 0x00;
+  read_request_buffer[12] = 0x00;
+  read_request_buffer[13] = 0x00;
+
+  uint8_t crc[2];
+  crc16_calculate(13, read_request_buffer + 1, crc);
+  read_request_buffer[14] = crc[0];
+  read_request_buffer[15] = crc[1];
+  ros_serial.write(read_request_buffer, sizeof(read_request_buffer));  //发送串口数据
+}
+
+void toCtr::move_relative_angle_yaw(float speed_yaw, float angle_yaw)
+{
+  move_angle_yaw(speed_yaw,
+                 platform_infos.yaw + platform_infos.encoder_yaw - platform_infos.encoder_yaw_init + angle_yaw);
+}
+
+bool toCtr::read_data_encoder()
+{
   ros_serial.flush();
+  read_data_request("encoder");
+  delay_ms(1.0);
+
   // read
   std_msgs::UInt8MultiArray result;
 
@@ -345,72 +466,85 @@ void toCtr::timerCb(const ros::TimerEvent &e)
         {
           result.data.clear();
           ros_serial.read(result.data, 10);
-          float roll, pitch, yaw;
           if (sizeof(result.data) != 0)
           {
-            roll = int16_t(result.data[4] + (result.data[5] << 8)) * 0.02197265625;
-            pitch = int16_t(result.data[6] + (result.data[7] << 8)) * 0.02197265625;
-            yaw = int16_t(result.data[8] + (result.data[9] << 8)) * 0.02197265625;
-            ROS_INFO_STREAM("roll: " << roll << ", pitch: " << pitch << ", yaw: " << yaw);
-            break;
+            platform_infos.encoder_roll = int16_t(result.data[4] + (result.data[5] << 8)) * 0.02197265625;
+            platform_infos.encoder_pitch = int16_t(result.data[6] + (result.data[7] << 8)) * 0.02197265625;
+            platform_infos.encoder_yaw = int16_t(result.data[8] + (result.data[9] << 8)) * 0.02197265625;
+            // ROS_INFO_STREAM("ENCODER: roll: " << platform_infos.encoder_roll
+            //                                   << ", pitch: " << platform_infos.encoder_pitch
+            //                                   << ", yaw: " << platform_infos.encoder_yaw);
+            return true;
           }
         }
       }
     }
     result.data.clear();
   }
-  // if (ros_serial.available() != 0)
-  // {
-  //   ros_serial.read(result.data, ros_serial.available());
-  //   ROS_INFO_STREAM("data size:" << sizeof(result.data));
-  //   for (int i = 0; i < sizeof(result.data); i++)
-  //   {
-  //     ROS_INFO("data: %x", result.data[i]);
-  //   }
-
-  //   // float roll, pitch, yaw;
-  //   // if (sizeof(result.data) != 0)
-  //   // {
-  //   //   roll = int16_t(result.data[6] + (result.data[7] << 8)) * 0.02197265625;
-  //   //   pitch = int16_t(result.data[8] + (result.data[9] << 8)) * 0.02197265625;
-  //   //   yaw = int16_t(result.data[10] + (result.data[11] << 8)) * 0.02197265625;
-  //   //   ROS_INFO_STREAM("roll: " << roll << ", pitch: " << pitch << ", yaw: " << yaw);
-  //   // }
-  // }
+  return false;
 }
 
-void toCtr::read_data_request()
+bool toCtr::read_data_imu()
 {
-  uint8_t read_request_buffer[16];
-  read_request_buffer[0] = 0x24;
-  read_request_buffer[1] = 0x58;
-  read_request_buffer[2] = 0x0a;
-  read_request_buffer[3] = 0x62;
+  ros_serial.flush();
+  read_data_request("imu");
+  delay_ms(1.0);
 
-  read_request_buffer[4] = 0x08;
-  read_request_buffer[5] = 0x00;
-  read_request_buffer[6] = 0x00;
-  read_request_buffer[7] = 0x00;
+  // read
+  std_msgs::UInt8MultiArray result;
 
-  read_request_buffer[8] = 0x00;
-  read_request_buffer[9] = 0x00;
-  read_request_buffer[10] = 0x00;
-  read_request_buffer[11] = 0x00;
-  read_request_buffer[12] = 0x00;
-  read_request_buffer[13] = 0x00;
+  while (ros_serial.available() != 0)
+  {
+    if (ros_serial.available() != 0)
+    {
+      ros_serial.read(result.data, 1);
+      // ROS_INFO("data: %x", result.data[0]);
+
+      if (result.data[0] == 0x24)
+      {
+        result.data.clear();
+        ros_serial.read(result.data, 1);
+        // ROS_INFO("data2: %x", result.data[0]);
+        if (result.data[0] == 0x58)
+        {
+          result.data.clear();
+          ros_serial.read(result.data, 10);
+          if (sizeof(result.data) != 0)
+          {
+            platform_infos.roll = int16_t(result.data[4] + (result.data[5] << 8)) * 0.02197265625;
+            platform_infos.pitch = int16_t(result.data[6] + (result.data[7] << 8)) * 0.02197265625;
+            platform_infos.yaw = int16_t(result.data[8] + (result.data[9] << 8)) * 0.02197265625;
+
+            return true;
+          }
+        }
+      }
+    }
+    result.data.clear();
+  }
+  return false;
+}
+
+void toCtr::encoder_calibration()
+{
+  uint8_t encoder_cal_buffer[16];
+  encoder_cal_buffer[0] = 0x24;
+  encoder_cal_buffer[1] = 0x1a;
+  encoder_cal_buffer[2] = 0x00;
+  encoder_cal_buffer[3] = 0x1a;
 
   uint8_t crc[2];
-  crc16_calculate(13, read_request_buffer + 1, crc);
-  read_request_buffer[14] = crc[0];
-  read_request_buffer[15] = crc[1];
-  ros_serial.write(read_request_buffer, sizeof(read_request_buffer));  //发送串口数据
+  crc16_calculate(3, encoder_cal_buffer + 1, crc);
+  encoder_cal_buffer[4] = crc[0];
+  encoder_cal_buffer[5] = crc[1];
+  ros_serial.write(encoder_cal_buffer, sizeof(encoder_cal_buffer));  //发送串口数据
 }
 
 int main(int argc, char *argv[])
 {
   ros::init(argc, argv, "toCtr");
   toCtr m_ctrobj;
-  m_ctrobj.init_serial();
+  m_ctrobj.init_system();
   ros::NodeHandle nh_p("~");
   ros::Timer timer = nh_p.createTimer(ros::Duration(CYCLE_TIME_SECOND), &toCtr::timerCb, &m_ctrobj);
   ros::spin();

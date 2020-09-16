@@ -16,6 +16,7 @@ byte POWER_ON = 0
 byte POWER_OFF = 1
 byte ANGLE_CONTROL = 2
 byte SPEED_CONTROL = 3
+byte ENCODER_CALIBRATI0N = 4
 
 byte SET_ROLL_P = 11
 byte SET_PITCH_P = 12
