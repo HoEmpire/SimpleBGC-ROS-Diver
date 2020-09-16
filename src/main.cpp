@@ -88,6 +88,7 @@ void toCtr::init_system()
                            << ", yaw: " << platform_infos.encoder_yaw);
   delay_ms(100);
   power_on();
+  move_relative_angle_yaw(5.0, 0.0);
 }
 
 int toCtr::init_serial()
@@ -348,10 +349,49 @@ void toCtr::scan()
 
   if (scan_infos.is_initialized == true)
   {
+    // scan_infos.scan_center_offset = platform_infos.yaw + platform_infos.encoder_yaw -
+    // platform_infos.encoder_yaw_init;
+    // float angle =
+    //     scan_infos.range * cos(2 * PI * scan_infos.working_tick / scan_infos.scan_tick) +
+    //     scan_infos.scan_center_offset;
+    // float speed = -scan_infos.range * 2 * PI / scan_infos.cycle_time *
+    //               sin(2 * PI * scan_infos.working_tick / scan_infos.scan_tick);
+    // float angle =
+    //     2.0 * scan_infos.range * scan_infos.working_tick / scan_infos.scan_tick + scan_infos.scan_center_offset;
+    // float speed = 4 * scan_infos.range / (scan_infos.scan_tick * CYCLE_TIME_SECOND);
+    // move_angle_yaw(speed, angle);
+    // scan_infos.working_tick++;
+    // if(scan_infos.working_tick == 1000)
+    // if (scan_infos.working_tick % (scan_infos.scan_tick / 2) == 0 &&
+    //     abs(platform_infos.yaw + platform_infos.encoder_yaw - platform_infos.encoder_yaw_init -
+    //         scan_infos.scan_center_offset) > 10)
+    // {
+    //   scan_infos.is_initialized = false;
+    //   scan_infos.working_tick = 0;
+    // }
+    if (scan_infos.working_tick == 0)
+    {
+      scan_infos.scan_start = scan_infos.range + scan_infos.scan_center_offset;
+      scan_infos.scan_end = -scan_infos.range + scan_infos.scan_center_offset;
+    }
+    else if (scan_infos.working_tick == scan_infos.scan_tick / 2)
+    {
+      scan_infos.scan_start = -scan_infos.range + scan_infos.scan_center_offset;
+      scan_infos.scan_center_offset = platform_infos.yaw + platform_infos.encoder_yaw - platform_infos.encoder_yaw_init;
+      scan_infos.scan_end = scan_infos.range + scan_infos.scan_center_offset;
+    }
+    else if (scan_infos.working_tick == scan_infos.scan_tick)
+    {
+      scan_infos.scan_start = scan_infos.range + scan_infos.scan_center_offset;
+      scan_infos.scan_center_offset = platform_infos.yaw + platform_infos.encoder_yaw - platform_infos.encoder_yaw_init;
+      scan_infos.scan_end = -scan_infos.range + scan_infos.scan_center_offset;
+      scan_infos.working_tick = 0;
+    }
+
+    float speed = (scan_infos.scan_end - scan_infos.scan_start) / (scan_infos.scan_tick / 2 * CYCLE_TIME_SECOND);
     float angle =
-        scan_infos.range * cos(2 * PI * scan_infos.working_tick / scan_infos.scan_tick) + scan_infos.scan_center_offset;
-    float speed = -scan_infos.range * 2 * PI / scan_infos.cycle_time *
-                  sin(2 * PI * scan_infos.working_tick / scan_infos.scan_tick);
+        scan_infos.scan_start + speed * (scan_infos.working_tick % (scan_infos.scan_tick / 2)) * CYCLE_TIME_SECOND;
+    ROS_INFO_STREAM("angle: " << angle << ", speed: " << speed);
     move_angle_yaw(speed, angle);
     scan_infos.working_tick++;
   }
@@ -537,7 +577,7 @@ void toCtr::encoder_calibration()
   crc16_calculate(3, encoder_cal_buffer + 1, crc);
   encoder_cal_buffer[4] = crc[0];
   encoder_cal_buffer[5] = crc[1];
-  ros_serial.write(encoder_cal_buffer, sizeof(encoder_cal_buffer));  //发送串口数据
+  ros_serial.write(encoder_cal_buffer, sizeof(encoder_cal_buffer));  //发送串口数
 }
 
 int main(int argc, char *argv[])

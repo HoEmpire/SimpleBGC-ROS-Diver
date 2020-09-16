@@ -71,10 +71,12 @@ struct scan_info
   float range;
   float cycle_time;
   float scan_center_offset;
+  float scan_start, scan_end;
+
   void init()
   {
     working_tick = 0;
-    init_tick = 100;
+    init_tick = 50;
     is_initialized = false;
   }
 };
