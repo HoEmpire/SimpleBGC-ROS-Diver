@@ -1,3 +1,6 @@
+#include <chrono>
+#include <thread>
+
 #define FREE 0
 #define SCANNING 1
 #define TRACKING 2
@@ -87,3 +90,8 @@ struct track_info
     error = 0;
   }
 };
+
+void delay_ms(const int msecs)
+{
+  std::this_thread::sleep_for(std::chrono::milliseconds(msecs));
+}
