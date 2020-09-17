@@ -11,7 +11,6 @@
 #include <ctime>
 
 #include "util.h"
-#define CYCLE_TIME_SECOND 0.02
 
 class toCtr
 {
@@ -57,10 +56,11 @@ public:
 
 toCtr::toCtr()
 {
+  ros::NodeHandle nh("~");
+  loadConfig(nh);
   platform_infos.init();
   scan_infos.init();
   track_infos.init();
-  ros::NodeHandle nh("~");
   pertocon_sub = nh.subscribe<platform_driver::command>("/write", 10, &toCtr::command_hub, this);
 }
 
@@ -88,7 +88,7 @@ void toCtr::init_system()
                            << ", yaw: " << platform_infos.encoder_yaw);
   delay_ms(100);
   power_on();
-  move_relative_angle_yaw(5.0, 0.0);
+  move_relative_angle_yaw(config.reset_speed, 0.0);
 }
 
 int toCtr::init_serial()
@@ -243,7 +243,7 @@ void toCtr::command_hub(platform_driver::command command_msg)
     }
     else if (command_msg.mode == FREE)
     {
-      move_relative_angle_yaw(5.0, 0);
+      move_relative_angle_yaw(config.reset_speed, 0);
       platform_infos.status = TRANSIENT;
       platform_infos.transient_tick = 0;
     }
@@ -331,7 +331,7 @@ void toCtr::scan()
     {
       scan_infos.scan_center_offset = platform_infos.yaw + platform_infos.encoder_yaw - platform_infos.encoder_yaw_init;
       scan_infos.init_yaw_error = scan_infos.range + scan_infos.scan_center_offset;
-      scan_infos.init_speed = scan_infos.init_yaw_error / (CYCLE_TIME_SECOND * scan_infos.init_tick);
+      scan_infos.init_speed = scan_infos.init_yaw_error / (config.cycle_time_second * scan_infos.init_tick);
     }
 
     if (scan_infos.working_tick < scan_infos.init_tick)
@@ -343,7 +343,7 @@ void toCtr::scan()
     {
       scan_infos.is_initialized = true;
       scan_infos.working_tick = 0;
-      scan_infos.scan_tick = scan_infos.cycle_time / CYCLE_TIME_SECOND;
+      scan_infos.scan_tick = scan_infos.cycle_time / config.cycle_time_second;
     }
   }
 
@@ -358,7 +358,7 @@ void toCtr::scan()
     //               sin(2 * PI * scan_infos.working_tick / scan_infos.scan_tick);
     // float angle =
     //     2.0 * scan_infos.range * scan_infos.working_tick / scan_infos.scan_tick + scan_infos.scan_center_offset;
-    // float speed = 4 * scan_infos.range / (scan_infos.scan_tick * CYCLE_TIME_SECOND);
+    // float speed = 4 * scan_infos.range / (scan_infos.scan_tick * config.cycle_time_second);
     // move_angle_yaw(speed, angle);
     // scan_infos.working_tick++;
     // if(scan_infos.working_tick == 1000)
@@ -388,10 +388,11 @@ void toCtr::scan()
       scan_infos.working_tick = 0;
     }
 
-    float speed = (scan_infos.scan_end - scan_infos.scan_start) / (scan_infos.scan_tick / 2 * CYCLE_TIME_SECOND);
-    float angle =
-        scan_infos.scan_start + speed * (scan_infos.working_tick % (scan_infos.scan_tick / 2)) * CYCLE_TIME_SECOND;
-    ROS_INFO_STREAM("angle: " << angle << ", speed: " << speed);
+    float speed = (scan_infos.scan_end - scan_infos.scan_start) / (scan_infos.scan_tick / 2 * config.cycle_time_second);
+    float angle = scan_infos.scan_start +
+                  speed * (scan_infos.working_tick % (scan_infos.scan_tick / 2)) * config.cycle_time_second;
+    if (config.debug_output)
+      ROS_INFO_STREAM("angle: " << angle << ", speed: " << speed);
     move_angle_yaw(speed, angle);
     scan_infos.working_tick++;
   }
@@ -425,10 +426,10 @@ void toCtr::timerCb(const ros::TimerEvent &e)
   }
   else if (platform_infos.status == TRANSIENT)
   {
-    if (platform_infos.transient_tick < 1000)
+    if (platform_infos.transient_tick < (config.transient_time / config.cycle_time_second))
     {
       platform_infos.transient_tick++;
-      if (platform_infos.transient_tick < 10)
+      if (platform_infos.transient_tick < 10)  // STOP the current motion
         move_angle_yaw(0, platform_infos.yaw);
     }
     else
@@ -586,6 +587,6 @@ int main(int argc, char *argv[])
   toCtr m_ctrobj;
   m_ctrobj.init_system();
   ros::NodeHandle nh_p("~");
-  ros::Timer timer = nh_p.createTimer(ros::Duration(CYCLE_TIME_SECOND), &toCtr::timerCb, &m_ctrobj);
+  ros::Timer timer = nh_p.createTimer(ros::Duration(config.cycle_time_second), &toCtr::timerCb, &m_ctrobj);
   ros::spin();
 }

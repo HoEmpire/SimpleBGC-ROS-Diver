@@ -1,0 +1,11 @@
+basic:
+  debug_output: false
+  cycle_time_second: 0.02
+  reset_speed: 5.0
+  transient_time: 1.0
+
+scan:
+  init_time: 2.0
+
+track:
+  track_p: 1.0
