@@ -1,5 +1,5 @@
 basic:
-  debug_output: false
+  debug_output: true
   cycle_time_second: 0.02
   reset_speed: 5.0
   transient_time: 1.0
