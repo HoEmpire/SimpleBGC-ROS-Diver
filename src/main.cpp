@@ -98,7 +98,7 @@ int toCtr::init_serial()
 
 void toCtr::init_encoder()
 {
-  platform_infos.encoder_yaw_init = platform_infos.encoder_yaw;
+  platform_infos.encoder_yaw_init = 0.0;
   ROS_INFO_STREAM("Set initial encoder yaw to be: " << platform_infos.encoder_yaw_init << " degree.");
 }
 
@@ -129,6 +129,7 @@ void toCtr::init_system()
   ROS_INFO_STREAM("Initial Encoder angles:");
   ROS_INFO_STREAM("roll: " << platform_infos.encoder_roll << ", pitch: " << platform_infos.encoder_pitch
                            << ", yaw: " << platform_infos.encoder_yaw);
+  init_encoder();
 }
 
 void toCtr::power_on()
