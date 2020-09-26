@@ -12,6 +12,7 @@
 struct ConfigSetting
 {
   bool debug_output_scan;
+  bool debug_output_encoder;
   float cycle_time_second;
   float reset_speed;
   float transient_time;
@@ -23,6 +24,7 @@ struct ConfigSetting
 void loadConfig(ros::NodeHandle n)
 {
   n.getParam("/basic/debug_output_scan", config.debug_output_scan);
+  n.getParam("/basic/debug_output_encoder", config.debug_output_encoder);
   n.getParam("/basic/init_time", config.init_time);
   n.getParam("/basic/cycle_time_second", config.cycle_time_second);
   n.getParam("/basic/reset_speed", config.reset_speed);

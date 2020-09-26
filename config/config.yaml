@@ -1,5 +1,6 @@
 basic:
   debug_output_scan: true
+  debug_output_encoder: false
   init_time: 10
   cycle_time_second: 0.02
   reset_speed: 5.0
