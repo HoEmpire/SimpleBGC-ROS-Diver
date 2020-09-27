@@ -513,50 +513,40 @@ bool toCtr::read_data_encoder()
 
   // read
   std_msgs::UInt8MultiArray result;
-  uint8_t buffer[14];
 
   while (ros_serial.available() != 0)
   {
-    ros_serial.read(result.data, 1);
+    // ros_serial.read(result.data, 1);
     // ROS_INFO("data: %x", result.data[0]);
 
     // header check
     if (ros_serial.read(result.data, 1) && result.data[0] == 0x24)
     {
-      buffer[0] = 0x24;
       result.data.clear();
+      // ROS_INFO("data1: %x", result.data[0]);
       if (ros_serial.read(result.data, 1) && result.data[0] == 0x58)
-      // ROS_INFO("data2: %x", result.data[0]);
+
       {
-        buffer[1] = 0x58;
         result.data.clear();
         // Check sum test
         if (ros_serial.read(result.data, 2) && (0x58 + result.data[0] == result.data[1]))
         {
-          buffer[2] = result.data[0];
-          buffer[3] = result.data[1];
-          if (ros_serial.read(result.data, 10))
+          // ROS_INFO("data3: %x", result.data[0]);
+          // ROS_INFO("data4: %x", result.data[1]);
+          result.data.clear();
+          if (ros_serial.read(result.data, 8))
           {
-            for (uint i = 4; i < 14; i++)
-              buffer[i] = result.data[i - 4];
-            uint8_t crc[2];
-            crc16_calculate(11, buffer + 1, crc);
-            // crc check
-            if (crc[0] == result.data[12] && crc[1] == result.data[13])
-            {
-              platform_infos.encoder_roll = int16_t(result.data[6] + (result.data[7] << 8)) * 0.02197265625;
-              platform_infos.encoder_pitch = int16_t(result.data[8] + (result.data[9] << 8)) * 0.02197265625;
-              platform_infos.encoder_yaw = int16_t(result.data[10] + (result.data[11] << 8)) * 0.02197265625;
-              if (config.debug_output_encoder)
-                ROS_INFO_STREAM("ENCODER: roll: " << platform_infos.encoder_roll
-                                                  << ", pitch: " << platform_infos.encoder_pitch
-                                                  << ", yaw: " << platform_infos.encoder_yaw);
-              return true;
-            }
+            platform_infos.encoder_roll = int16_t(result.data[2] + (result.data[3] << 8)) * 0.02197265625;
+            platform_infos.encoder_pitch = int16_t(result.data[4] + (result.data[5] << 8)) * 0.02197265625;
+            platform_infos.encoder_yaw = int16_t(result.data[6] + (result.data[7] << 8)) * 0.02197265625;
+            return true;
           }
         }
+        else
+          ROS_INFO("Check sum failed in encoder reading...");
       }
     }
+
     result.data.clear();
   }
   return false;
@@ -570,46 +560,40 @@ bool toCtr::read_data_imu()
 
   // read
   std_msgs::UInt8MultiArray result;
-  uint8_t buffer[14];
 
   while (ros_serial.available() != 0)
   {
-    ros_serial.read(result.data, 1);
+    // ros_serial.read(result.data, 1);
     // ROS_INFO("data: %x", result.data[0]);
 
     // header check
     if (ros_serial.read(result.data, 1) && result.data[0] == 0x24)
     {
-      buffer[0] = 0x24;
       result.data.clear();
+      // ROS_INFO("data1: %x", result.data[0]);
       if (ros_serial.read(result.data, 1) && result.data[0] == 0x58)
-      // ROS_INFO("data2: %x", result.data[0]);
+
       {
-        buffer[1] = 0x58;
         result.data.clear();
         // Check sum test
         if (ros_serial.read(result.data, 2) && (0x58 + result.data[0] == result.data[1]))
         {
-          buffer[2] = result.data[0];
-          buffer[3] = result.data[1];
-          if (ros_serial.read(result.data, 10))
+          // ROS_INFO("data3: %x", result.data[0]);
+          // ROS_INFO("data4: %x", result.data[1]);
+          result.data.clear();
+          if (ros_serial.read(result.data, 8))
           {
-            for (uint i = 4; i < 14; i++)
-              buffer[i] = result.data[i - 4];
-            uint8_t crc[2];
-            crc16_calculate(11, buffer + 1, crc);
-            // crc check
-            if (crc[0] == result.data[12] && crc[1] == result.data[13])
-            {
-              platform_infos.roll = int16_t(result.data[6] + (result.data[7] << 8)) * 0.02197265625;
-              platform_infos.pitch = int16_t(result.data[8] + (result.data[9] << 8)) * 0.02197265625;
-              platform_infos.yaw = int16_t(result.data[10] + (result.data[11] << 8)) * 0.02197265625;
-              return true;
-            }
+            platform_infos.roll = int16_t(result.data[2] + (result.data[3] << 8)) * 0.02197265625;
+            platform_infos.pitch = int16_t(result.data[4] + (result.data[5] << 8)) * 0.02197265625;
+            platform_infos.yaw = int16_t(result.data[6] + (result.data[7] << 8)) * 0.02197265625;
+            return true;
           }
         }
+        else
+          ROS_INFO("Check sum failed in imu reading...");
       }
     }
+
     result.data.clear();
   }
   return false;
