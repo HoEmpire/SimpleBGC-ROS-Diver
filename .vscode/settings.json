@@ -63,5 +63,7 @@
     "typeindex": "cpp",
     "typeinfo": "cpp",
     "valarray": "cpp"
-  }
+  },
+  "editor.fontFamily": "'dejavu san mono'",
+  "editor.fontSize": 16
 }

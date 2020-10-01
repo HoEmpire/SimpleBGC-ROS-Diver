@@ -3,6 +3,7 @@
 #include <chrono>
 #include <thread>
 
+#define INIT -1
 #define FREE 0
 #define SCANNING 1
 #define TRACKING 2
@@ -82,7 +83,7 @@ struct platform_info
     roll = 0;
     pitch = 0;
     yaw = 0;
-    status = FREE;
+    status = INIT;
   }
 };
 
