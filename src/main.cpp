@@ -169,7 +169,7 @@ void toCtr::reset()
 }
 
 void toCtr::move_angle(float speed_roll, float angle_roll, float speed_pitch, float angle_pitch, float speed_yaw,
-                       float angle_yaw, int mode = 3)
+                       float angle_yaw, int mode = 2)
 {
   command_buffer.angle_speed_buffer[0] = 0x24; // header
   command_buffer.angle_speed_buffer[1] = 0x43; //
@@ -214,7 +214,7 @@ void toCtr::move_angle(float speed_roll, float angle_roll, float speed_pitch, fl
   platform_infos.yaw = angle_yaw;
 }
 
-void toCtr::move_angle_yaw(float speed_yaw, float angle_yaw, int mode = 3)
+void toCtr::move_angle_yaw(float speed_yaw, float angle_yaw, int mode = 2)
 {
   move_angle(0, 0, 0, 0, speed_yaw, angle_yaw, mode);
 }
@@ -302,7 +302,7 @@ void toCtr::command_hub(platform_driver::command command_msg)
     else if (platform_infos.command == command_msg.ANGLE_CONTROL)
     {
       move_angle(command_msg.roll_speed, command_msg.roll_angle, command_msg.pitch_speed, command_msg.pitch_angle,
-                 command_msg.yaw_speed, command_msg.yaw_angle, 3);
+                 command_msg.yaw_speed, command_msg.yaw_angle, 2);
     }
     else if (platform_infos.command == command_msg.SPEED_CONTROL)
     {
