@@ -8,6 +8,7 @@
 #define SCANNING 1
 #define TRACKING 2
 #define TRANSIENT 3
+#define POINT 4
 #define PI 3.1415926535
 
 struct ConfigSetting
@@ -18,8 +19,9 @@ struct ConfigSetting
   float reset_speed;
   float transient_time;
   float scan_init_time;
-  float track_p;
   float init_time;
+  float pitch_in_yaw_control;
+  float track_speed_limit;
 } config;
 
 void loadConfig(ros::NodeHandle n)
@@ -30,8 +32,9 @@ void loadConfig(ros::NodeHandle n)
   n.getParam("/basic/cycle_time_second", config.cycle_time_second);
   n.getParam("/basic/reset_speed", config.reset_speed);
   n.getParam("/basic/transient_time", config.transient_time);
+  n.getParam("/basic/pitch_in_yaw_control", config.pitch_in_yaw_control);
   n.getParam("/scan/init_time", config.scan_init_time);
-  n.getParam("/track/track_p", config.track_p);
+  n.getParam("/track/track_speed_limit", config.track_speed_limit);
 }
 
 void crc16_update(uint16_t length, uint8_t *data, uint8_t crc[2])
@@ -110,13 +113,7 @@ struct scan_info
 
 struct track_info
 {
-  float p;
-  float error;
-  void init()
-  {
-    p = config.track_p;
-    error = 0;
-  }
+  float target_yaw = 0.0;
 };
 
 void delay_ms(const int msecs)

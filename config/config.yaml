@@ -1,13 +1,14 @@
 basic:
-  debug_output_scan: true
+  debug_output_scan: false
   debug_output_encoder: false
   init_time: 10
   cycle_time_second: 0.05
   reset_speed: 5.0
   transient_time: 1.0
+  pitch_in_yaw_control: 0.0
 
 scan:
   init_time: 2.0
 
 track:
-  track_p: 1.0
+  track_speed_limit: 500.0

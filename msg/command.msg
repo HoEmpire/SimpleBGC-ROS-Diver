@@ -10,7 +10,7 @@ uint8 set_pid_value
 uint8 mode 
 float32 scan_range
 float32 scan_cycle_time
-float32 error
+float32 track_yaw
 
 byte POWER_ON = 0
 byte POWER_OFF = 1
