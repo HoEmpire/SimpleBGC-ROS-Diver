@@ -270,7 +270,7 @@ void toCtr::command_hub(platform_driver::command command_msg)
   }
   else if (platform_infos.status == SCANNING)
   {
-    if (command_msg.mode == SCANNING)
+    if (command_msg.mode == SCANNING && scan_infos.range != command_msg.scan_range && scan_infos.cycle_time != command_msg.scan_cycle_time)
     {
       ROS_INFO("Change Scanning parameters!");
       scan_infos.init();
@@ -513,7 +513,10 @@ void toCtr::timerCb(const ros::TimerEvent &e)
     else if (platform_infos.command == command_msg.ANGLE_CONTROL || platform_infos.command == command_msg.RELATIVE_YAW_CONTROL || platform_infos.command == command_msg.SPEED_CONTROL)
       ros_serial.write(command_buffer.angle_speed_buffer, sizeof(command_buffer.angle_speed_buffer));
     else
+    {
+      ROS_INFO("Send pid buffer!");
       ros_serial.write(command_buffer.PID_buffer, sizeof(command_buffer.PID_buffer));
+    }
   }
   else if (platform_infos.status == SCANNING)
   {

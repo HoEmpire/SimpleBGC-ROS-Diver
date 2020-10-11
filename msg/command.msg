@@ -1,8 +1,8 @@
-uint8 command #0:on; 1:off; 2:angle; 11-13:set roll pid; 21-23 set pitch pid; 31-33 set yaw pid
-float32 roll_angle # 0.02197265625 degree 
+uint8 command 
+float32 roll_angle  
 float32 pitch_angle
 float32 yaw_angle
-float32 roll_speed # 0.1220740379 deg/sec
+float32 roll_speed 
 float32 pitch_speed
 float32 yaw_speed
 uint8 set_pid_value 
