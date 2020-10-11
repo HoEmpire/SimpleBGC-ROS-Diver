@@ -60,11 +60,11 @@ basic:
   init_time: 10 #platform initialization time
   cycle_time_second: 0.05 #the serial communication time
   reset_speed: 5.0 # the time for reset from scan/track to free status
-  transient_time: 1.0 # aborted
+  transient_time: 1.0 # abandoned
   pitch_in_yaw_control: 0.0 # the pitch offset in yaw control mode
 
 scan:
-  init_time: 2.0 #aborted
+  init_time: 2.0 #abandoned
 
 track:
   track_speed_limit: 500.0 #the maximum speed in tracking deg/s (the  actual performance is slower)
