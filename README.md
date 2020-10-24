@@ -14,7 +14,7 @@ A motor serial communication driver for a three-axis stabilizing platform using 
 
 ## Prerequisite
 
-- ros
+- ros-melodic-desktop
 - ros-melodic-serial
 
 ## Usage
