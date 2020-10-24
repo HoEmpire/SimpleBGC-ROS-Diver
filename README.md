@@ -60,11 +60,8 @@ basic:
   init_time: 10 #platform initialization time
   cycle_time_second: 0.05 #the serial communication time
   reset_speed: 5.0 # the time for reset from scan/track to free status
-  transient_time: 1.0 # abandoned
+  transient_time: 1.0 # transient time between SCAN/TRACK to FREE
   pitch_in_yaw_control: 0.0 # the pitch offset in yaw control mode
-
-scan:
-  init_time: 2.0 #abandoned
 
 track:
   track_speed_limit: 500.0 #the maximum speed in tracking deg/s (the  actual performance is slower)
@@ -88,18 +85,6 @@ byte SPEED_CONTROL = 3 // only speed should be provided
 byte ENCODER_CALIBRATI0N = 4 // calibrate the offset of the encoder
 byte RELATIVE_YAW_CONTROL = 5 //control the relative yaw
 
-byte SET_ROLL_P = 11
-byte SET_PITCH_P = 12
-byte SET_YAW_P = 13
-
-byte SET_ROLL_I = 21
-byte SET_PITCH_I = 22
-byte SET_YAW_I = 23
-
-byte SET_ROLL_D = 31
-byte SET_PITCH_D = 32
-byte SET_YAW_D = 33
-
 //only used in angle_control mode and speed_control mode
 float32 roll_angle
 float32 pitch_angle
@@ -107,9 +92,6 @@ float32 yaw_angle
 float32 roll_speed
 float32 pitch_speed
 float32 yaw_speed
-
-//the pid value used in setting pid of 3-axis motors
-uint8 set_pid_value
 
 // Free Status: mode = 0  (command list only works in FREE status)
 // Scan Status: mode = 1

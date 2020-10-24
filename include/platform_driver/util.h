@@ -33,7 +33,6 @@ void loadConfig(ros::NodeHandle n)
   n.getParam("/basic/reset_speed", config.reset_speed);
   n.getParam("/basic/transient_time", config.transient_time);
   n.getParam("/basic/pitch_in_yaw_control", config.pitch_in_yaw_control);
-  n.getParam("/scan/init_time", config.scan_init_time);
   n.getParam("/track/track_speed_limit", config.track_speed_limit);
 }
 
