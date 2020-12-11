@@ -24,7 +24,7 @@ A motor serial communication driver for a three-axis stabilizing platform using 
 1. Build a workspace
 
 ```shell
-mkdir ws/src
+mkdir -p ws/src
 ```
 
 2. Clone this repository in `/ws/src`
