@@ -1,4 +1,4 @@
-# Platform Diver
+# SimpleBGC ROS Diver
 
 <div align=center><img width="512" height="364" src="img/platform.jpg"/></div>
 
